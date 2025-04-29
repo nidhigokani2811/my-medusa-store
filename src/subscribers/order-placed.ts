@@ -30,11 +30,11 @@ export default async function orderPlacedHandler({
     });
 
     const { data: technicians } = await query.graph({
-        entity: "technician",
+        entity: "technicians",
         fields: ["*"],
     });
+    console.log("🚀 ~ technicians:", technicians)
 
-    console.log(technicians);
 
     const remoteLink = container.resolve("remoteLink");
 
@@ -42,10 +42,10 @@ export default async function orderPlacedHandler({
 
     links.push({
         [Modules.ORDER]: {
-            order_id: order ? order[0].id : null,
+            order_id: id,
         },
         [TECHNICIAN_MODULE]: {
-            technician_id: technicians ? technicians[0].id : null,
+            technician_id: technicians.length > 0 ? technicians[technicians.length - 1].id : null,
         },
     });
     await remoteLink.create(links);
