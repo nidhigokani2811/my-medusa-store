@@ -17,7 +17,7 @@ export async function GET(
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setDate(today.getDate() - 1);
 
   // Calculate week boundaries (Monday as first day of week)
   // If you want Sunday as first day, set weekStart = 0
@@ -30,47 +30,97 @@ export async function GET(
   const prevWeekEnd = new Date(thisWeekStart);
   prevWeekEnd.setMilliseconds(-1); // End of last week
 
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Helper to format date to ISO string (for DB)
+  const toISO = (d: Date) => d.toISOString();
+
+  // Example for this week
+  const { data: thisWeekOrders } = await query.graph({
+    entity: "order",
+    fields: ["*", "total", "created_at", "summary.*"],
+    filters: {
+      created_at: {
+        $gte: toISO(thisWeekStart),
+        $lte: toISO(now),
+      },
+    },
+  });
+
+  // Example for last week
+  const { data: lastWeekOrders } = await query.graph({
+    entity: "order",
+    fields: ["*", "total", "created_at", "summary.*"],
+    filters: {
+      created_at: {
+        $gte: toISO(prevWeekStart),
+        $lte: toISO(prevWeekEnd),
+      },
+    },
+  });
+
+  // Example for today
+  const { data: todayOrders } = await query.graph({
+    entity: "order",
+    fields: ["*", "total", "created_at", "summary.*"],
+    filters: {
+      created_at: {
+        $gte: toISO(today),
+        $lte: toISO(now),
+      },
+    },
+  });
+
+  // Example for yesterday
+  const { data: yesterdayOrders } = await query.graph({
+    entity: "order",
+    fields: ["*", "total", "created_at", "summary.*"],
+    filters: {
+      created_at: {
+        $gte: toISO(yesterday),
+        $lte: toISO(today),
+      },
+    },
+  });
+
+  // Example for this month
+  const { data: thisMonthOrders } = await query.graph({
+    entity: "order",
+    fields: ["*", "total", "created_at", "summary.*"],
+    filters: {
+      created_at: {
+        $gte: toISO(monthStart),
+        $lte: toISO(now)
+      },
+    },
+  });
+
   // Helper to calculate percentage change
   function getPercentage(current: number, previous: number): number | null {
     if (previous === 0) return null;
     return +(((current - previous) / previous) * 100).toFixed(2);
   }
 
-  // Orders and revenue for this week and last week
-  const thisWeekOrdersArr = orders.filter(order => {
-    const orderDate = new Date(order.created_at);
-    return orderDate >= thisWeekStart && orderDate <= now;
-  });
-  const lastWeekOrdersArr = orders.filter(order => {
-    const orderDate = new Date(order.created_at);
-    return orderDate >= prevWeekStart && orderDate <= prevWeekEnd;
-  });
-  const todayOrdersArr = orders.filter(order => new Date(order.created_at) >= today && new Date(order.created_at) <= now);
-  const yesterdayOrdersArr = orders.filter(order => new Date(order.created_at) >= yesterday && new Date(order.created_at) < today);
+  const thisWeekOrdersCount = thisWeekOrders.length;
+  const lastWeekOrdersCount = lastWeekOrders.length;
+  const todayOrdersCount = todayOrders.length;
+  const yesterdayOrdersCount = yesterdayOrders.length;
 
-  const thisWeekOrders = thisWeekOrdersArr.length;
-  const lastWeekOrders = lastWeekOrdersArr.length;
-  const todayOrders = todayOrdersArr.length;
-  const yesterdayOrders = yesterdayOrdersArr.length;
+  const thisWeekRevenue = thisWeekOrders.reduce((sum, order) => sum + (order.summary?.current_order_total || 0), 0);
+  const lastWeekRevenue = lastWeekOrders.reduce((sum, order) => sum + (order.summary?.current_order_total || 0), 0);
 
-  const thisWeekRevenue = thisWeekOrdersArr.reduce((sum, order) => sum + (order.summary?.current_order_total || 0), 0);
-  const lastWeekRevenue = lastWeekOrdersArr.reduce((sum, order) => sum + (order.summary?.current_order_total || 0), 0);
-
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const thisMonthRevenue = orders
-    .filter(order => new Date(order.created_at) >= monthStart && new Date(order.created_at) <= now)
-    .reduce((sum, order) => sum + (order.summary?.current_order_total || 0), 0);
+  const thisMonthRevenue = thisMonthOrders.reduce((sum, order) => sum + (order.summary?.current_order_total || 0), 0);
 
   res.json({
     thisWeekCount: {
-      thisWeekOrdersCount: thisWeekOrders,
-      lastWeekOrdersCount: lastWeekOrders,
-      percentage: getPercentage(thisWeekOrders, lastWeekOrders)
+      thisWeekOrdersCount: thisWeekOrdersCount,
+      lastWeekOrdersCount: lastWeekOrdersCount,
+      percentage: getPercentage(thisWeekOrdersCount, lastWeekOrdersCount)
     },
     todayCount: {
-      todayOrdersCount: todayOrders,
-      yesterdayOrdersCount: yesterdayOrders,
-      percentage: getPercentage(todayOrders, yesterdayOrders)
+      todayOrdersCount: todayOrdersCount,
+      yesterdayOrdersCount: yesterdayOrdersCount,
+      percentage: getPercentage(todayOrdersCount, yesterdayOrdersCount)
     },
     thisWeekRevenue: {
       thisWeekRevenue: thisWeekRevenue,
