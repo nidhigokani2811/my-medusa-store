@@ -42,6 +42,24 @@
           "nullable": false,
           "mappedType": "text"
         },
+        "grant_id": {
+          "name": "grant_id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
+        "calendar_id": {
+          "name": "calendar_id",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "text"
+        },
         "tenant_id": {
           "name": "tenant_id",
           "type": "text",

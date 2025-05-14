@@ -1,18 +1,15 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { getOrdersListWorkflow } from "@medusajs/medusa/core-flows";
+import TechnicianService from "../../../modules/technicians/service";
+import { TECHNICIAN_MODULE } from "../../../modules/technicians";
 
-export async function GET(
-  req: MedusaRequest,
-  res: MedusaResponse
-) {
+export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
   const { data: orders } = await query.graph({
     entity: "order",
-    fields: ["*", "total", "created_at", "summary.*",],
-    filters: {
-
-    }
+    fields: ["*", "total", "created_at", "summary.*"],
+    filters: {},
   });
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -23,7 +20,9 @@ export async function GET(
   // If you want Sunday as first day, set weekStart = 0
   const weekStart = 0; // 0 = Sunday, 1 = Monday
   const thisWeekStart = new Date(today);
-  thisWeekStart.setDate(today.getDate() - ((today.getDay() + 7 - weekStart) % 7));
+  thisWeekStart.setDate(
+    today.getDate() - ((today.getDay() + 7 - weekStart) % 7)
+  );
   thisWeekStart.setHours(0, 0, 0, 0);
   const prevWeekStart = new Date(thisWeekStart);
   prevWeekStart.setDate(thisWeekStart.getDate() - 7);
@@ -90,7 +89,7 @@ export async function GET(
     filters: {
       created_at: {
         $gte: toISO(monthStart),
-        $lte: toISO(now)
+        $lte: toISO(now),
       },
     },
   });
@@ -106,29 +105,55 @@ export async function GET(
   const todayOrdersCount = todayOrders.length;
   const yesterdayOrdersCount = yesterdayOrders.length;
 
-  const thisWeekRevenue = thisWeekOrders.reduce((sum, order) => sum + (order.summary?.current_order_total || 0), 0);
-  const lastWeekRevenue = lastWeekOrders.reduce((sum, order) => sum + (order.summary?.current_order_total || 0), 0);
+  const thisWeekRevenue = thisWeekOrders.reduce(
+    (sum, order) => sum + (order.summary?.current_order_total || 0),
+    0
+  );
+  const lastWeekRevenue = lastWeekOrders.reduce(
+    (sum, order) => sum + (order.summary?.current_order_total || 0),
+    0
+  );
 
-  const thisMonthRevenue = thisMonthOrders.reduce((sum, order) => sum + (order.summary?.current_order_total || 0), 0);
+  const thisMonthRevenue = thisMonthOrders.reduce(
+    (sum, order) => sum + (order.summary?.current_order_total || 0),
+    0
+  );
 
   res.json({
     thisWeekCount: {
       thisWeekOrdersCount: thisWeekOrdersCount,
       lastWeekOrdersCount: lastWeekOrdersCount,
-      percentage: getPercentage(thisWeekOrdersCount, lastWeekOrdersCount)
+      percentage: getPercentage(thisWeekOrdersCount, lastWeekOrdersCount),
     },
     todayCount: {
       todayOrdersCount: todayOrdersCount,
       yesterdayOrdersCount: yesterdayOrdersCount,
-      percentage: getPercentage(todayOrdersCount, yesterdayOrdersCount)
+      percentage: getPercentage(todayOrdersCount, yesterdayOrdersCount),
     },
     thisWeekRevenue: {
       thisWeekRevenue: thisWeekRevenue,
       lastWeekRevenue: lastWeekRevenue,
-      percentage: getPercentage(thisWeekRevenue, lastWeekRevenue)
+      percentage: getPercentage(thisWeekRevenue, lastWeekRevenue),
     },
     thisMonthRevenue: {
-      amount: thisMonthRevenue
-    }
+      amount: thisMonthRevenue,
+    },
+  });
+}
+
+export async function POST(
+  req: MedusaRequest<{ name: string; email: string }>,
+  res: MedusaResponse
+) {
+  const technicianService: TechnicianService =
+    req.scope.resolve(TECHNICIAN_MODULE);
+
+  const response = await technicianService.createTechnicians({
+    ...req.body,
+  });
+
+  res.json({
+    message: "Success",
+    data: response,
   });
 }
