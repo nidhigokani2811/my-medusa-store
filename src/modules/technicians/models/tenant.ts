@@ -7,5 +7,5 @@ export const Tenant = model.define("tenant", {
   nylas_grant_id: model.text().nullable(),
   nylas_calendar_id: model.text().nullable(),
   nylas_configuration_id: model.text().nullable(),
-  payload_tenant_id: model.text(),
+  payload_tenant_id: model.number(),
 });

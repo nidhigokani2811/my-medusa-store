@@ -27,7 +27,8 @@ export default async function orderPlacedHandler({
             "billing_address.*",
             "shipping_address.*",
             "summary.*",
-            "metadata.*"
+            "metadata.*",
+            "sales_channel.*"
         ],
         filters: { id: id },
     });
@@ -37,41 +38,38 @@ export default async function orderPlacedHandler({
 
 
     // book technician appointment in nylas
-    if (order[0].metadata && order[0].metadata.startTime && order[0].metadata.endTime && order[0]?.customer?.email) {
-      const data = await bookTechnicianAppointment(Number(order[0].metadata.startTime), Number(order[0].metadata.endTime), order[0]?.customer?.email, order[0].customer.first_name + " " + order[0].customer.last_name)
-       await updateOrderWorkflow(container).run({
+    if (order[0].metadata && order[0].metadata.startTime && order[0].metadata.endTime && order[0]?.customer?.email && order[0]?.sales_channel?.id) {
+        const data = await bookTechnicianAppointment(Number(order[0].metadata.startTime), Number(order[0].metadata.endTime), order[0]?.customer?.email, order[0].customer.first_name + " " + order[0].customer.last_name, order[0]?.sales_channel?.id)
+        await updateOrderWorkflow(container).run({
             input: {
                 id: id,
                 metadata: {
-                    nylasBookingId: data.data.booking_id
+                    nylasBookingId: data.booking.booking_id,
+                    technician_id: data.technician.id
                 },
                 user_id: order[0].customer.id
             }
         })
+
+
+
+        const remoteLink = container.resolve("remoteLink");
+
+        const links: LinkDefinition[] = [];
+
+        links.push({
+            [Modules.ORDER]: {
+                order_id: id,
+            },
+            [TECHNICIAN_MODULE]: {
+                technician_id: data.technician.id
+            },
+        });
+        await remoteLink.create(links);
     }
 
-    const { data: technicians } = await query.graph({
-        entity: "technicians",
-        fields: ["*"],
-    });
-    console.log("🚀 ~ technicians:", technicians)
-
-
-    const remoteLink = container.resolve("remoteLink");
-
-    const links: LinkDefinition[] = [];
-
-    links.push({
-        [Modules.ORDER]: {
-            order_id: id,
-        },
-        [TECHNICIAN_MODULE]: {
-            technician_id: technicians.length > 0 ? technicians[technicians.length - 1].id : null,
-        },
-    });
-    await remoteLink.create(links);
 }
 
-export const config: SubscriberConfig = { 
+export const config: SubscriberConfig = {
     event: "order.placed",
 };

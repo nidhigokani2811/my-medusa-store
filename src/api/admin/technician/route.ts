@@ -1,18 +1,10 @@
-//   name: model.text(),
-// email: model.text().unique(),
-// payload_technician_id: model.text().unique(),
-// nylas_grant_id: model.text().nullable(),
-// nylas_calendar_id: model.text().nullable(),
-// nylas_configuration_id: model.text().nullable(),
-// payload_tenant_id: model.text(),
+
 
 import { MedusaRequest } from "@medusajs/framework/http";
 import { MedusaResponse } from "@medusajs/framework/http";
 import TechnicianService from "../../../modules/technicians/service";
 import { TECHNICIAN_MODULE } from "../../../modules/technicians";
 import { CreateTechnicianInput } from "./validator";
-import { Modules } from "@medusajs/framework/utils";
-import { LinkDefinition } from "@medusajs/framework/types";
 import { container } from "@medusajs/framework";
 
 export async function POST(
@@ -39,19 +31,6 @@ export async function POST(
     nylas_configuration_id: req.body.nylas_configuration_id,
     tenant_id: tenant[0].id,
   });
-
-
-  // const remoteLink = container.resolve("remoteLink");
-  // const links: LinkDefinition[] = [];
-
-  // links.push({
-  //   [TECHNICIAN_MODULE]: {
-  //     tenant_id: tenant[0].id,
-  //     technician_id: response.id,
-  //   },
-  // });
-
-  // await remoteLink.create(links);
 
   res.json({
     message: "Technician created successfully",

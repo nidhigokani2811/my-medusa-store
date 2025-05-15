@@ -62,12 +62,12 @@
         },
         "payload_tenant_id": {
           "name": "payload_tenant_id",
-          "type": "text",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "mappedType": "text"
+          "mappedType": "integer"
         },
         "created_at": {
           "name": "created_at",
@@ -169,12 +169,12 @@
         },
         "payload_technician_id": {
           "name": "payload_technician_id",
-          "type": "text",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "mappedType": "text"
+          "mappedType": "integer"
         },
         "nylas_grant_id": {
           "name": "nylas_grant_id",
@@ -205,12 +205,12 @@
         },
         "payload_tenant_id": {
           "name": "payload_tenant_id",
-          "type": "text",
+          "type": "integer",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "mappedType": "text"
+          "mappedType": "integer"
         },
         "tenant_id": {
           "name": "tenant_id",
@@ -265,15 +265,6 @@
           "primary": false,
           "unique": false,
           "expression": "CREATE UNIQUE INDEX IF NOT EXISTS \"IDX_technician_email_unique\" ON \"technician\" (email) WHERE deleted_at IS NULL"
-        },
-        {
-          "keyName": "IDX_technician_payload_technician_id_unique",
-          "columnNames": [],
-          "composite": false,
-          "constraint": false,
-          "primary": false,
-          "unique": false,
-          "expression": "CREATE UNIQUE INDEX IF NOT EXISTS \"IDX_technician_payload_technician_id_unique\" ON \"technician\" (payload_technician_id) WHERE deleted_at IS NULL"
         },
         {
           "keyName": "IDX_technician_tenant_id",

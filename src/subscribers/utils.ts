@@ -1,10 +1,22 @@
+import { container } from "@medusajs/framework";
 
 
-export const bookTechnicianAppointment = async (startTime: number, endTime: number, customer_name: string, customer_email: string) => {
-    const NYLAS_CONFIGURATION_ID = '620dba8d-24c1-46e6-8841-69c0b6d896fd';
+export const bookTechnicianAppointment = async (startTime: number, endTime: number, customer_name: string, customer_email: string, sales_channel_id: string) => {
+
+    //sales channel id to tenant id
+    const query = container.resolve("query")
+    const { data: sales_channel } = await query.graph({
+        entity: "sales_channel",
+        filters: { id: sales_channel_id },
+        fields: ["tenant.*", "*"]
+    })
+
+    const configId = sales_channel[0]?.tenant?.nylas_configuration_id
+
+    // const NYLAS_CONFIGURATION_ID = '620dba8d-24c1-46e6-8841-69c0b6d896fd';
     const NYLAS_API_KEY = process.env.NYLAS_API_KEY;
     const responseAvailability = await fetch(
-        `${process.env.NYLAS_API_URL}scheduling/availability?configuration_id=${NYLAS_CONFIGURATION_ID}&end_time=${endTime}&start_time=${startTime}`,
+        `${process.env.NYLAS_API_URL}scheduling/availability?configuration_id=${configId}&end_time=${endTime}&start_time=${startTime}`,
         {
             headers: {
                 'Accept': 'application/json',
@@ -30,7 +42,18 @@ export const bookTechnicianAppointment = async (startTime: number, endTime: numb
     if (!emailAddress) {
         emailAddress = timeSlot.emails[0];
     }
-    const response = await fetch(`${process.env.NYLAS_API_URL}scheduling/bookings?configuration_id=${NYLAS_CONFIGURATION_ID}&timezone=Asia/Kolkata`, {
+
+    const { data: technician } = await query.graph({
+        entity: "technician",
+        filters: { email: emailAddress },
+        fields: ["*"]
+    })
+    if (!technician) {
+        throw new Error(`Technician not found for ${emailAddress}`);
+    }
+
+
+    const response = await fetch(`${process.env.NYLAS_API_URL}scheduling/bookings?configuration_id=${configId}&timezone=Asia/Kolkata`, {
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -45,11 +68,11 @@ export const bookTechnicianAppointment = async (startTime: number, endTime: numb
                     "email": emailAddress
                 }
             ],
-            "guest":{
-                "name":customer_name,
-                "email":customer_email
-              },
-              "timezone":"Asia/Kolkata"
+            "guest": {
+                "name": customer_name,
+                "email": customer_email
+            },
+            "timezone": "Asia/Kolkata"
         })
     });
     if (!response.ok) {
@@ -57,5 +80,5 @@ export const bookTechnicianAppointment = async (startTime: number, endTime: numb
         throw new Error(`Nylas API error: ${JSON.stringify(errorData)}`);
     }
     const data = await response.json();
-    return data;
+    return {booking: data, technician: technician[0]};
 }
