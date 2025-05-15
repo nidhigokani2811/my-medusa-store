@@ -1,17 +1,11 @@
 import { model } from "@medusajs/framework/utils";
-import { Tenant } from "./tenant";
 
-export const Technician = model.define("technician", {
-  id: model.id({ prefix: "tech" }).primaryKey(),
+export const Tenant = model.define("tenant", {
+  id: model.id({ prefix: "tenant" }).primaryKey(),
   name: model.text(),
   email: model.text().unique(),
-  payload_technician_id: model.text().unique(),
   nylas_grant_id: model.text().nullable(),
   nylas_calendar_id: model.text().nullable(),
   nylas_configuration_id: model.text().nullable(),
   payload_tenant_id: model.text(),
-  tenant: model.belongsTo(() => Tenant, {
-    fields: ["tenant_id"],
-    references: ["id"],
-  })
 });

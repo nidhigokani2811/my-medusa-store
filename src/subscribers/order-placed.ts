@@ -2,6 +2,8 @@ import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework";
 import { LinkDefinition } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import { TECHNICIAN_MODULE } from "../modules/technicians";
+import { bookTechnicianAppointment } from "./utils";
+import { updateOrderWorkflow } from "@medusajs/medusa/core-flows";
 
 export default async function orderPlacedHandler({
     event: { data },
@@ -25,9 +27,28 @@ export default async function orderPlacedHandler({
             "billing_address.*",
             "shipping_address.*",
             "summary.*",
+            "metadata.*"
         ],
         filters: { id: id },
     });
+
+
+    console.log("🚀 ~ order.metadata:", order[0].metadata)
+
+
+    // book technician appointment in nylas
+    if (order[0].metadata && order[0].metadata.startTime && order[0].metadata.endTime && order[0]?.customer?.email) {
+      const data = await bookTechnicianAppointment(Number(order[0].metadata.startTime), Number(order[0].metadata.endTime), order[0]?.customer?.email, order[0].customer.first_name + " " + order[0].customer.last_name)
+       await updateOrderWorkflow(container).run({
+            input: {
+                id: id,
+                metadata: {
+                    nylasBookingId: data.data.booking_id
+                },
+                user_id: order[0].customer.id
+            }
+        })
+    }
 
     const { data: technicians } = await query.graph({
         entity: "technicians",
@@ -51,6 +72,6 @@ export default async function orderPlacedHandler({
     await remoteLink.create(links);
 }
 
-export const config: SubscriberConfig = {
+export const config: SubscriberConfig = { 
     event: "order.placed",
 };
