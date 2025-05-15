@@ -44,7 +44,7 @@ export default async function orderPlacedHandler({
             input: {
                 id: id,
                 metadata: {
-                    nylasBookingId: data.booking.booking_id,
+                    nylasBookingId: data.booking.data.booking_id,
                     technician_id: data.technician.id
                 },
                 user_id: order[0].customer.id
