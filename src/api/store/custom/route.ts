@@ -17,8 +17,8 @@ export async function GET(
     entity: "technician",
     fields: ["*", "orders.*"],
     filters: {
-      ...(technician_id && { technician_id: technician_id as string }),
-      ...(tenant_id && { tenant_id: tenant_id as string }),
+      ...(technician_id && { payload_technician_id: parseInt(technician_id as string) }),
+      ...(tenant_id && { payload_tenant_id: parseInt(tenant_id as string) }),
     },
   });
 

@@ -1,5 +1,4 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework";
-import { LinkDefinition } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import { TECHNICIAN_MODULE } from "../modules/technicians";
 import { bookTechnicianAppointment } from "./utils";
@@ -9,65 +8,60 @@ export default async function orderPlacedHandler({
     event: { data },
     container,
 }: SubscriberArgs<{ id: string }>) {
-    const query = container.resolve(ContainerRegistrationKeys.QUERY);
-    const { id } = data;
+    try {
+        const query = container.resolve(ContainerRegistrationKeys.QUERY);
+        const { id } = data;
 
-
-    // Fetch order with items
-    const { data: order } = await query.graph({
-        entity: "order",
-        fields: [
-            "*",
-            "items.*",
-            "customer.*",
-            "items.metadata.*",
-            "items.variant.*",
-            "items.product.*",
-            "email",
-            "billing_address.*",
-            "shipping_address.*",
-            "summary.*",
-            "metadata.*",
-            "sales_channel.*"
-        ],
-        filters: { id: id },
-    });
-
-
-    console.log("🚀 ~ order.metadata:", order[0].metadata)
-
-
-    // book technician appointment in nylas
-    if (order[0].metadata && order[0].metadata.startTime && order[0].metadata.endTime && order[0]?.customer?.email && order[0]?.sales_channel?.id) {
-        const data = await bookTechnicianAppointment(Number(order[0].metadata.startTime), Number(order[0].metadata.endTime), order[0]?.customer?.email, order[0].customer.first_name + " " + order[0].customer.last_name, order[0]?.sales_channel?.id)
-        await updateOrderWorkflow(container).run({
-            input: {
-                id: id,
-                metadata: {
-                    nylasBookingId: data.booking.data.booking_id,
-                    technician_id: data.technician.id
-                },
-                user_id: order[0].customer.id
-            }
-        })
-
-
-
-        const remoteLink = container.resolve("remoteLink");
-
-        const links: LinkDefinition[] = [];
-
-        links.push({
-            [Modules.ORDER]: {
-                order_id: id,
-            },
-            [TECHNICIAN_MODULE]: {
-                technician_id: data.technician.id
-            },
+        // Fetch only required fields
+        const { data: order } = await query.graph({
+            entity: "order",
+            fields: [
+                "id",
+                "metadata",
+                "customer.email",
+                "customer.first_name",
+                "customer.last_name",
+                "sales_channel.id"
+            ],
+            filters: { id: id },
         });
-        await remoteLink.create(links);
-    }
 
+        const orderData = order[0];
+      
+
+        if (orderData.metadata?.startTime && orderData.metadata?.endTime && orderData.customer?.email && orderData.sales_channel?.id && orderData.metadata?.technicianEmail) {
+            // Book appointment
+            const bookingData = await bookTechnicianAppointment(
+                Number(orderData.metadata?.startTime),
+                Number(orderData.metadata?.endTime),
+                `${orderData.customer?.first_name} ${orderData.customer?.last_name}`,
+                orderData.customer?.email,
+                orderData.sales_channel?.id ?? "",
+                `${orderData.metadata?.technicianEmail}`
+            );
+
+            // Update order and create link in parallel
+            await Promise.all([
+                updateOrderWorkflow(container).run({
+                    input: {
+                        id,
+                        metadata: {
+                            nylasBookingId: bookingData.booking.data.booking_id,
+                            technician_id: bookingData.technician.id
+                        },
+                        user_id: orderData.customer.id
+                    }
+                }),
+                container.resolve("remoteLink").create([{
+                    [Modules.ORDER]: { order_id: id },
+                    [TECHNICIAN_MODULE]: { technician_id: bookingData.technician.id }
+                }])
+            ]);
+        }
+    } catch (error) {
+        console.error("Error in orderPlacedHandler:", error);
+        throw error;
+    }
 }
 
 export const config: SubscriberConfig = {
